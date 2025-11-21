@@ -1,0 +1,153 @@
+:root {
+  --color-dentro: #2ecc71;
+  --color-fuera: #e74c3c;
+  --color-pendiente: #bdc3c7;
+  --dark: #1f2d3d;
+  --light: #f4f6f8;
+  --accent: #2980b9;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  display: flex;
+  color: var(--dark);
+  background: var(--light);
+}
+
+.sidebar {
+  width: 340px;
+  padding: 24px;
+  background: #fff;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.sidebar h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  color: var(--accent);
+}
+
+.descripcion {
+  margin: 0;
+  color: #555;
+}
+
+.panel {
+  border: 1px solid #e1e8f0;
+  border-radius: 10px;
+  padding: 16px;
+  background: #fafbfc;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel h2,
+.panel h3 {
+  margin: 0;
+  color: var(--dark);
+  font-size: 1.1rem;
+}
+
+.panel.hidden {
+  display: none;
+}
+
+input,
+select {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #cfd8e3;
+  font-size: 0.95rem;
+}
+
+.estado {
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.estado-dentro {
+  background: rgba(46, 204, 113, 0.15);
+  color: var(--color-dentro);
+  border: 1px solid var(--color-dentro);
+}
+
+.estado-fuera {
+  background: rgba(231, 76, 60, 0.15);
+  color: var(--color-fuera);
+  border: 1px solid var(--color-fuera);
+}
+
+.estado-pendiente {
+  background: rgba(189, 195, 199, 0.2);
+  color: var(--color-pendiente);
+  border: 1px solid var(--color-pendiente);
+}
+
+button {
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+button:hover {
+  background: #1f6da1;
+}
+
+.secundario {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.peligro {
+  background: transparent;
+  color: var(--color-fuera);
+  border: 1px solid var(--color-fuera);
+}
+
+.grupo-botones {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaflet-control-container .leaflet-draw {
+  display: none;
+}
+
+.nota,
+.hint {
+  font-size: 0.85rem;
+  color: #6b7a8f;
+}
+
+.info {
+  font-size: 0.9rem;
+  color: #6b7a8f;
+}
+
+#map {
+  flex: 1;
+  height: 100vh;
+}
