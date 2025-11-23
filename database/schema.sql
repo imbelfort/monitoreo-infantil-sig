@@ -1,6 +1,6 @@
 ﻿-- Database bootstrap
-CREATE DATABASE sig_monitoreo;
-\c sig_monitoreo
+-- CREATE DATABASE sig_monitoreo;
+-- \c sig_monitoreo
 
 -- Enable PostGIS
 CREATE EXTENSION IF NOT EXISTS postgis;
