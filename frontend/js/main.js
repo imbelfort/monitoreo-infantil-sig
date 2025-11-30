@@ -2,7 +2,9 @@
 
 
 // ==================ANTIGUO=========================
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:5000/api`;
+//const API_BASE = `${window.location.protocol}//${window.location.hostname}:5000/api`;
+const API_BASE = "http://localhost:5000/api";
+
 const CHILD_ID = 1;
 const DEFAULT_CENTER = { lat: -17.78305, lon: -63.18255 };
 const VAPID_PUBLIC_KEY = "BJBWcyM9jEKZvKnIO3Nh3mUIQditqSCNiMSCVpfS-MJjL5Pm1Fk8dS1EzAXOU7fJMLV-jHKDStAArhDAWRkngmY"
@@ -175,7 +177,7 @@ async function iniciarSesion() {
     currentUser = data;
 
     registrarPush(currentUser.id);
-    console.log("Push registrado para el usuario:", data);
+    console.log("Push registrado para el usuario:", currentUser);
 
     loginEmail.value = '';
     loginPass.value = '';
@@ -460,6 +462,15 @@ async function enviarNotificacionPrueba() {
       mensaje
     })
   });
+
+
+/*
+  const resp = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+*/
 
   alert("Notificación enviada");
 }
