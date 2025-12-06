@@ -1,9 +1,9 @@
 ﻿//const { log } = require("console");
 
 
-// ==================ANTIGUO=========================
-//const API_BASE = `${window.location.protocol}//${window.location.hostname}:5000/api`;
-const API_BASE = "http://localhost:5000/api";
+// ==================CONFIGURACIÓN=========================
+// Usar ruta relativa para producción (Vercel) o localhost por defecto si falla
+const API_BASE = '/api';
 
 const CHILD_ID = 1;
 const DEFAULT_CENTER = { lat: -17.78305, lon: -63.18255 };
@@ -464,13 +464,13 @@ async function enviarNotificacionPrueba() {
   });
 
 
-/*
-  const resp = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-*/
+  /*
+    const resp = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+  */
 
   alert("Notificación enviada");
 }

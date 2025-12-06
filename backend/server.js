@@ -18,6 +18,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en http://localhost:${PORT}`);
-});
+// Exportar app para Vercel
+module.exports = app;
+
+// Solo escuchar si se ejecuta directamente (no en modo test/serverless)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Servidor escuchando en http://localhost:${PORT}`);
+  });
+}
