@@ -28,8 +28,9 @@ services:
       PGPASSWORD: 123
       PGDATABASE: sig_monitoreo
       PORT: 4000
-    ports:
-      - "5000:4000"
+    # No exponemos el puerto directamente para forzar el uso de Nginx (proxy)
+    # ports:
+    #   - "5000:4000"
     networks:
       - sig-net
 
@@ -40,8 +41,22 @@ services:
     volumes:
       - ./frontend:/app
     command: ["npx", "serve", "-l", "3100", "."]
+    # ports:
+    #   - "3100:3100"
+    networks:
+      - sig-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: sig_nginx
+    restart: always
     ports:
-      - "3100:3100"
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - backend
+      - frontend
     networks:
       - sig-net
 
