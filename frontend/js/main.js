@@ -1,11 +1,8 @@
-﻿//const { log } = require("console");
-
-
-// ==================CONFIGURACIÓN=========================
+﻿// ==================CONFIGURACIÓN=========================
 // Usar ruta relativa para producción (Vercel) o localhost por defecto si falla
 const API_BASE = '/api';
 
-const CHILD_ID = 1;
+// const CHILD_ID = 1; // ELIMINADO: Ahora se obtiene dinámicamente al iniciar sesión
 const DEFAULT_CENTER = { lat: -17.78305, lon: -63.18255 };
 const VAPID_PUBLIC_KEY = "BJBWcyM9jEKZvKnIO3Nh3mUIQditqSCNiMSCVpfS-MJjL5Pm1Fk8dS1EzAXOU7fJMLV-jHKDStAArhDAWRkngmY"
 
@@ -20,7 +17,10 @@ let childData = null;
 let madreMonitorInterval = null;
 let pendingAreaGeoJSON = null;
 let drawPolygonTool = null;
+let currentChildId = null; // ID del niño seleccionado
+let watchId = null; // Variable de rastreo
 
+// Elementos UI
 const loginEmail = document.getElementById('login-email');
 const loginPass = document.getElementById('login-pass');
 const estadoTexto = document.getElementById('estado-texto');
@@ -30,6 +30,22 @@ const btnSimular = document.getElementById('btn-simular');
 const btnDibujarArea = document.getElementById('btn-dibujar-area');
 const btnGuardarArea = document.getElementById('btn-guardar-area');
 const btnEliminarArea = document.getElementById('btn-eliminar-area');
+const btnLogin = document.getElementById('btn-login');
+const btnLogout = document.getElementById('btn-logout');
+
+// Elementos Modal Vinculacion
+const btnGenerarCodigo = document.getElementById('btn-generar-codigo');
+const btnMostrarModalCodigo = document.getElementById('btn-mostrar-modal-codigo');
+const closeModalCodigo = document.getElementById('close-modal-codigo');
+const modalCodigo = document.getElementById('modal-codigo');
+
+// Elementos Modal Nuevo Niño
+const modalNino = document.getElementById('modal-nuevo-nino');
+const btnMostrarModalNino = document.getElementById('btn-mostrar-modal-nino');
+const closeModalNino = document.getElementById('close-modal-nino');
+const btnGuardarNino = document.getElementById('btn-guardar-nino');
+const selectUnidadNino = document.getElementById('new-nino-unidad');
+
 btnSimular.disabled = true;
 
 const panels = {
@@ -41,16 +57,44 @@ const panels = {
 
 document.addEventListener('DOMContentLoaded', () => {
   inicializarMapa();
-  document.getElementById('btn-login').addEventListener('click', iniciarSesion);
-  document.getElementById('btn-logout').addEventListener('click', cerrarSesion);
-  btnSimular.addEventListener('click', actualizarPosicion);
+
+  // Eventos Login
+  btnLogin.addEventListener('click', iniciarSesion);
+  btnLogout.addEventListener('click', cerrarSesion);
+
+  // Eventos Madre
   btnDibujarArea.addEventListener('click', iniciarDibujoMadre);
   btnGuardarArea.addEventListener('click', guardarAreaMadre);
   btnEliminarArea.addEventListener('click', eliminarAreaMadre);
 
-  document.getElementById('btn-notificar').addEventListener('click', enviarNotificacionPrueba);
+  // Eventos Rastreo/Simulacion
+  btnSimular.addEventListener('click', toggleRastreo);
 
-  cargarDatosNino();
+  // Eventos Vinculacion
+  btnGenerarCodigo.addEventListener('click', generarCodigoNino);
+  btnMostrarModalCodigo.addEventListener('click', () => {
+    modalCodigo.classList.remove('hidden');
+    if (currentChildId) generarCodigoNino();
+  });
+  closeModalCodigo.addEventListener('click', () => {
+    modalCodigo.classList.add('hidden');
+  });
+
+  // Eventos Nuevo Niño
+  if (btnMostrarModalNino) {
+    btnMostrarModalNino.addEventListener('click', abrirModalNuevoNino);
+    closeModalNino.addEventListener('click', () => {
+      modalNino.classList.add('hidden');
+    });
+    btnGuardarNino.addEventListener('click', guardarNuevoNino);
+  }
+
+  // Cerrar Modales click afuera
+  window.addEventListener('click', (event) => {
+    if (event.target == modalCodigo) modalCodigo.classList.add('hidden');
+    if (event.target == modalNino) modalNino.classList.add('hidden');
+  });
+
   cargarUnidades();
 });
 
@@ -84,6 +128,74 @@ function inicializarMapa() {
   });
 }
 
+function abrirModalNuevoNino() {
+  if (!currentUser || currentUser.rol !== 'madre') return;
+
+  // Limpiar campos
+  document.getElementById('new-nino-nombre').value = '';
+  document.getElementById('new-nino-apellidos').value = '';
+  document.getElementById('new-nino-obs').value = '';
+
+  // Llenar select
+  selectUnidadNino.innerHTML = '<option value="">Seleccione Unidad...</option>';
+  unidadesCache.forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u.id;
+    opt.textContent = u.nombre;
+    selectUnidadNino.appendChild(opt);
+  });
+
+  modalNino.classList.remove('hidden');
+}
+
+async function guardarNuevoNino() {
+  const nombre = document.getElementById('new-nino-nombre').value.trim();
+  const apellidos = document.getElementById('new-nino-apellidos').value.trim();
+  const obs = document.getElementById('new-nino-obs').value.trim();
+  const unidadId = selectUnidadNino.value;
+
+  if (!nombre || !unidadId) {
+    return alert('Nombre y Unidad Educativa son obligatorios.');
+  }
+
+  try {
+    const resp = await fetch(`${API_BASE}/ninos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre,
+        apellidos,
+        observaciones: obs,
+        unidad_id: Number(unidadId),
+        madre_id: currentUser.id
+      })
+    });
+
+    if (!resp.ok) throw new Error('Error al registrar niño');
+    const nuevoNino = await resp.json();
+
+    // Actualizar UI
+    modalNino.classList.add('hidden');
+    currentChildId = nuevoNino.id;
+    actualizarEstadoUI(`Niño "${nuevoNino.nombre}" registrado exitosamente.`, 'pendiente');
+
+    // Recargar datos
+    cargarDatosNino();
+
+    // Sugerir vinculación
+    setTimeout(() => {
+      if (confirm('¿Deseas vincular el dispositivo de ' + nuevoNino.nombre + ' ahora?')) {
+        modalCodigo.classList.remove('hidden');
+        generarCodigoNino();
+      }
+    }, 500);
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+}
+
 async function registrarPush(userId) {
   // Registrar service worker
   const registro = await navigator.serviceWorker.register("/service-worker.js");
@@ -108,19 +220,18 @@ async function registrarPush(userId) {
   console.log("Suscripción guardada correctamente");
 }
 
-
 async function cargarDatosNino() {
+  if (!currentChildId) return;
   try {
-    const resp = await fetch(`${API_BASE}/ninos/${CHILD_ID}`);
+    const resp = await fetch(`${API_BASE}/ninos/${currentChildId}`);
     if (!resp.ok) throw new Error('No se pudo obtener datos del niño');
     childData = await resp.json();
-    ninoActivoEl.textContent = childData.nombre;
+    ninoActivoEl.innerHTML = `<strong>${childData.nombre}</strong> <span style="color: green; font-size: 0.9em;">(Dispositivo Vinculado)</span>`;
     await cargarAreaSegura();
   } catch (error) {
     console.error(error.message);
   }
 }
-
 
 async function cargarUnidades() {
   try {
@@ -136,8 +247,9 @@ async function cargarUnidades() {
 }
 
 async function cargarAreaSegura() {
+  if (!currentChildId) return;
   try {
-    const resp = await fetch(`${API_BASE}/ninos/${CHILD_ID}/area`);
+    const resp = await fetch(`${API_BASE}/ninos/${currentChildId}/area`);
     if (!resp.ok) throw new Error('Sin área personalizada');
     const data = await resp.json();
     if (data.geom) {
@@ -182,9 +294,18 @@ async function iniciarSesion() {
     loginEmail.value = '';
     loginPass.value = '';
     actualizarPaneles();
+
+    // Lógica selección de niño
     if (currentUser.rol === 'madre') {
-      iniciarMonitoreoMadre();
-      actualizarEstadoUI('Dibuja el área segura y presiona guardar.', 'pendiente');
+      if (data.ninos && data.ninos.length > 0) {
+        currentChildId = data.ninos[0].id; // Por defecto el primero
+        console.log("Niño seleccionado ID:", currentChildId);
+        cargarDatosNino(); // Cargar datos del niño seleccionado
+        iniciarMonitoreoMadre();
+        actualizarEstadoUI('Dibuja el área segura y presiona guardar.', 'pendiente');
+      } else {
+        actualizarEstadoUI('No tienes niños vinculados.', 'fuera');
+      }
     } else {
       detenerMonitoreoMadre();
       actualizarEstadoUI('Conectado. Puedes reportar posiciones.', 'pendiente');
@@ -196,6 +317,7 @@ async function iniciarSesion() {
 
 function cerrarSesion() {
   currentUser = null;
+  currentChildId = null;
   detenerMonitoreoMadre();
   actualizarPaneles();
   actualizarEstadoUI('Inicia sesión para comenzar.', 'pendiente');
@@ -211,62 +333,56 @@ function actualizarPaneles() {
     ? `${currentUser.rol === 'madre' ? 'Madre' : 'Niño'} conectado`
     : '';
   panels.usuario.querySelector('.usuario-detalle').textContent = isLogged ? currentUser.email : '';
-  btnSimular.disabled = !isLogged || currentUser.rol !== 'nino';
+  if (isLogged && currentUser.rol === 'nino') {
+    btnSimular.disabled = false;
+    btnSimular.textContent = "Iniciar Rastreo GPS";
+  } else {
+    btnSimular.disabled = true;
+    btnSimular.textContent = "Simular nueva posición";
+  }
   const soloMadre = !isLogged || currentUser.rol !== 'madre';
   [btnDibujarArea, btnGuardarArea, btnEliminarArea].forEach((btn) => {
-    btn.disabled = soloMadre;
+    btn.classList.toggle('hidden', soloMadre);
   });
 }
 
 function iniciarDibujoMadre() {
-  if (!currentUser || currentUser.rol !== 'madre') {
-    return actualizarEstadoUI('Solo la madre puede dibujar el área.', 'pendiente');
-  }
   if (drawPolygonTool) {
     drawPolygonTool.disable();
   }
   drawPolygonTool = new L.Draw.Polygon(map, {
-    showArea: true,
-    allowIntersection: false,
     shapeOptions: {
-      color: '#f39c12',
-      weight: 2,
-      fillColor: '#f39c12',
-      fillOpacity: 0.2
+      color: '#8e44ad',
+      weight: 2
     }
   });
   drawPolygonTool.enable();
-  actualizarEstadoUI('Dibuja el polígono y luego presiona Guardar área.', 'pendiente');
+  unidadActivaEl.textContent = 'Dibujando nueva área...';
 }
 
 async function guardarAreaMadre() {
-  if (!currentUser || currentUser.rol !== 'madre') {
-    return actualizarEstadoUI('Solo la madre puede guardar el área.', 'pendiente');
-  }
-  if (!pendingAreaGeoJSON && areaLayer) {
-    pendingAreaGeoJSON = areaLayer.toGeoJSON();
-  }
   if (!pendingAreaGeoJSON) {
-    return actualizarEstadoUI('Dibuja un polígono antes de guardar.', 'pendiente');
+    return actualizarEstadoUI('Primero dibuja un área en el mapa.', 'pendiente');
   }
+  if (!currentUser || currentUser.rol !== 'madre') return;
+
   try {
     const payload = {
       madre_id: currentUser.id,
       nombre: 'Área definida por la madre',
       geom: pendingAreaGeoJSON.geometry || pendingAreaGeoJSON
     };
-    const resp = await fetch(`${API_BASE}/ninos/${CHILD_ID}/area`, {
+    const resp = await fetch(`${API_BASE}/ninos/${currentChildId}/area`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+
     if (!resp.ok) {
-      const error = await resp.json();
-      throw new Error(error.error || 'No se pudo guardar el área.');
+      throw new Error('Error guardando área');
     }
+
     const data = await resp.json();
-    pendingAreaGeoJSON = JSON.parse(data.geom);
-    dibujarAreaSegura(pendingAreaGeoJSON);
     unidadActivaEl.textContent = data.nombre || 'Área segura personalizada';
     actualizarEstadoUI('Área segura guardada correctamente.', 'dentro');
   } catch (error) {
@@ -279,7 +395,7 @@ async function eliminarAreaMadre() {
     return actualizarEstadoUI('Solo la madre puede eliminar el área.', 'pendiente');
   }
   try {
-    await fetch(`${API_BASE}/ninos/${CHILD_ID}/area`, {
+    await fetch(`${API_BASE}/ninos/${currentChildId}/area`, {
       method: 'DELETE'
     });
     if (areaLayer) {
@@ -345,62 +461,74 @@ function dibujarUnidadBase(geojson) {
   map.fitBounds(unidadLayer.getBounds(), { padding: [20, 20] });
 }
 
-async function actualizarPosicion() {
-  if (!currentUser || currentUser.rol !== 'nino') {
-    return actualizarEstadoUI('Solo el niño puede reportar su posición.', 'pendiente');
+
+async function toggleRastreo() {
+  if (!currentUser || currentUser.rol !== 'nino') return;
+
+  const btn = btnSimular;
+
+  if (watchId !== null) {
+    // DETENER RASTREO
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+    btn.textContent = "Iniciar Rastreo GPS";
+    btn.classList.remove('pulsando'); // Remover efecto visual si existe
+    actualizarEstadoUI('Rastreo detenido.', 'pendiente');
+  } else {
+    // INICIAR RASTREO
+    if (!('geolocation' in navigator)) {
+      return alert('Tu dispositivo no soporta GPS.');
+    }
+
+    btn.textContent = "Detener Rastreo";
+    btn.classList.add('pulsando'); // Efecto visual para indicar actividad
+    actualizarEstadoUI('Buscando señal GPS...', 'pendiente');
+
+    watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude, accuracy } = position.coords;
+        enviarPosicionReal(latitude, longitude, accuracy);
+      },
+      (error) => {
+        console.error("Error GPS:", error);
+        actualizarEstadoUI('Error obteniendo ubicación: ' + error.message, 'fuera');
+      },
+      {
+        enableHighAccuracy: true, // Usar GPS real
+        maximumAge: 0,
+        timeout: 10000
+      }
+    );
   }
-  const punto = generarPuntoAleatorio();
+}
+
+async function enviarPosicionReal(lat, lon, accuracy) {
   try {
+    // Mostrar en mapa localmente
+    moverMarcador(lat, lon, 'pendiente');
+
+    // Enviar al Backend
     const resp = await fetch(`${API_BASE}/posiciones`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        nino_id: CHILD_ID,
-        lat: punto.lat,
-        lon: punto.lon
+        nino_id: currentUser.id, // Si es el niño quien reporta, usa su propio ID.
+        lat: lat,
+        lon: lon,
+        precision: accuracy
       })
     });
 
-    if (!resp.ok) {
-      const error = await resp.json();
-      throw new Error(error.error || 'Error al registrar posición.');
-    }
+    if (!resp.ok) throw new Error('Error enviando posición');
 
     const data = await resp.json();
+    // Actualizar color/estado basado en la respuesta del servidor (dentro/fuera)
     moverMarcador(data.lat, data.lon, data.estado);
     actualizarEstadoUI(data.mensaje, data.estado, data.fecha_hora);
+
   } catch (error) {
-    actualizarEstadoUI(error.message, 'pendiente');
+    console.error(error);
   }
-}
-
-function moverMarcador(lat, lon, estado) {
-  marcador.setLatLng([lat, lon]);
-  const color = estado === 'dentro' ? '#2ecc71' : '#e74c3c';
-  marcador.setStyle({
-    color,
-    fillColor: color
-  });
-  map.panTo([lat, lon], { animate: true });
-}
-
-function actualizarEstadoUI(mensaje, estado, fecha) {
-  if (!estadoTexto) return;
-  estadoTexto.textContent = fecha ? `${mensaje} (${new Date(fecha).toLocaleTimeString()})` : mensaje;
-  estadoTexto.className = 'estado ' + (estado === 'dentro'
-    ? 'estado-dentro'
-    : estado === 'fuera'
-      ? 'estado-fuera'
-      : 'estado-pendiente');
-}
-
-function generarPuntoAleatorio() {
-  const delta = (Math.random() - 0.5) * 0.0015;
-  const delta2 = (Math.random() - 0.5) * 0.0015;
-  return {
-    lat: DEFAULT_CENTER.lat + delta,
-    lon: DEFAULT_CENTER.lon + delta2
-  };
 }
 
 function getNombreUnidad(id) {
@@ -422,8 +550,9 @@ function detenerMonitoreoMadre() {
 }
 
 async function consultarUltimaPosicion() {
+  if (!currentChildId) return;
   try {
-    const resp = await fetch(`${API_BASE}/posiciones/ultimas/${CHILD_ID}?limit=1`);
+    const resp = await fetch(`${API_BASE}/posiciones/ultimas/${currentChildId}?limit=1`);
     if (!resp.ok) throw new Error('No se pudo obtener la última posición.');
     const data = await resp.json();
     if (data.total === 0) {
@@ -444,36 +573,67 @@ async function consultarUltimaPosicion() {
   }
 }
 
-async function enviarNotificacionPrueba() {
-  if (!currentUser) {
-    alert("Primero inicia sesión");
-    return;
+async function generarCodigoNino() {
+  if (!currentUser || currentUser.rol !== 'madre') return;
+
+  const btn = document.getElementById('btn-generar-codigo');
+  const display = document.getElementById('codigo-display');
+  btn.disabled = true;
+  display.textContent = 'Generando...';
+
+  try {
+    const resp = await fetch(`${API_BASE}/ninos/generar-codigo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ninoId: currentChildId })
+    });
+
+    if (!resp.ok) {
+      throw new Error('Error al generar código');
+    }
+
+    const data = await resp.json();
+    display.textContent = data.codigo;
+    actualizarEstadoUI('Código generado. Úsalo en el celular del niño.', 'pendiente');
+  } catch (error) {
+    console.error(error);
+    display.textContent = 'ERROR';
+    actualizarEstadoUI('No se pudo generar el código.', 'fuera');
+    display.style.fontSize = "1rem";
+    display.textContent = 'ERR: ' + error.message;
+  } finally {
+    btn.disabled = false;
   }
-
-  const titulo = "⚠ Alerta del Sistema";
-  const mensaje = "Este es un mensaje predeterminado enviado por el frontend....";
-
-  await fetch(`${API_BASE}/notificacion-prueba`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      userId: currentUser.id,
-      titulo,
-      mensaje
-    })
-  });
-
-
-  /*
-    const resp = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-  */
-
-  alert("Notificación enviada");
 }
 
+function actualizarEstadoUI(mensaje, estado, fecha) {
+  const estadoTexto = document.getElementById('estado-texto');
+  if (!estadoTexto) return;
 
+  estadoTexto.textContent = mensaje;
+  estadoTexto.className = 'estado'; // reset
 
+  if (estado) {
+    estadoTexto.classList.add(`estado-${estado}`);
+  }
+}
+
+function moverMarcador(lat, lon, estado) {
+  if (!marcador) return;
+
+  // Actualizar posición
+  marcador.setLatLng([lat, lon]);
+
+  // Centrar mapa si es necesario (opcional)
+  map.panTo([lat, lon]);
+
+  // Actualizar color según estado
+  let color = '#3498db'; // Azul (pendiente/desconocido)
+  if (estado === 'dentro') color = '#2ecc71'; // Verde
+  if (estado === 'fuera') color = '#e74c3c'; // Rojo
+
+  marcador.setStyle({
+    color: color,
+    fillColor: color
+  });
+}

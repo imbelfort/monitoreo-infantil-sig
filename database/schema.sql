@@ -29,6 +29,7 @@ CREATE TABLE nino (
     nombre VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100),
     observaciones TEXT,
+    codigo_vinculacion VARCHAR(10) UNIQUE,
     unidad_id INTEGER REFERENCES unidad_educativa(id) ON DELETE SET NULL,
     madre_id INTEGER REFERENCES usuario(id) ON DELETE SET NULL
 );
@@ -57,18 +58,18 @@ CREATE OR REPLACE FUNCTION registrar_posicion(
     _lat DOUBLE PRECISION
 )
 RETURNS TABLE (
-    posicion_id INTEGER,
-    estado VARCHAR(20),
-    mensaje TEXT,
-    lat DOUBLE PRECISION,
-    lon DOUBLE PRECISION,
-    fecha_hora TIMESTAMP
+    out_posicion_id INTEGER,
+    out_estado VARCHAR(20),
+    out_mensaje TEXT,
+    out_lat DOUBLE PRECISION,
+    out_lon DOUBLE PRECISION,
+    out_fecha_hora TIMESTAMP
 ) AS $$
 DECLARE
     punto geometry(Point, 4326);
     area geometry(Polygon, 4326);
-    estado_txt VARCHAR(20);
-    mensaje_txt TEXT;
+    v_estado_txt VARCHAR(20);
+    v_mensaje_txt TEXT;
 BEGIN
     punto := ST_SetSRID(ST_MakePoint(_lon, _lat), 4326);
 
@@ -94,26 +95,26 @@ BEGIN
     END IF;
 
     IF ST_Within(punto, area) THEN
-        estado_txt := 'dentro';
-        mensaje_txt := 'El nino esta dentro del area segura.';
+        v_estado_txt := 'dentro';
+        v_mensaje_txt := 'El nino esta dentro del area segura.';
     ELSE
-        estado_txt := 'fuera';
-        mensaje_txt := 'ALERTA: El nino esta fuera del area segura.';
+        v_estado_txt := 'fuera';
+        v_mensaje_txt := 'ALERTA: El nino esta fuera del area segura.';
     END IF;
 
     RETURN QUERY
     WITH inserted AS (
         INSERT INTO posicion_nino (nino_id, posicion, estado)
-        VALUES (_nino_id, punto, estado_txt)
+        VALUES (_nino_id, punto, v_estado_txt)
         RETURNING id, posicion, estado, fecha_hora
     )
     SELECT
-        inserted.id AS posicion_id,
-        inserted.estado,
-        mensaje_txt AS mensaje,
-        ST_Y(inserted.posicion::geometry) AS lat,
-        ST_X(inserted.posicion::geometry) AS lon,
-        inserted.fecha_hora
+        inserted.id AS out_posicion_id,
+        inserted.estado AS out_estado,
+        v_mensaje_txt AS out_mensaje,
+        ST_Y(inserted.posicion::geometry) AS out_lat,
+        ST_X(inserted.posicion::geometry) AS out_lon,
+        inserted.fecha_hora AS out_fecha_hora
     FROM inserted;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

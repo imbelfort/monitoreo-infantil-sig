@@ -10,6 +10,8 @@ const notificacionesController = require("../controllers/notificacionesControlle
 const router = express.Router();
 
 router.post('/auth/login', authController.login);
+router.post('/ninos/generar-codigo', authController.generarCodigoNino);
+router.post('/ninos/vincular', authController.vincularDispositivo);
 
 router.post("/suscripcion-push", notificacionesController.guardarSuscripcion);
 router.post("/notificacion-prueba", notificacionesController.enviarPrueba);

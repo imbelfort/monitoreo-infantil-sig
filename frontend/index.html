@@ -6,7 +6,7 @@
   <title>Monitoreo Infantil SIG</title>
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
   <link rel="stylesheet" href="vendor/leaflet-draw/leaflet.draw.css">
-  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/main.css?v=2">
 </head>
 
 <body>
@@ -35,7 +35,16 @@
         <button id="btn-guardar-area" class="secundario">Guardar área</button>
         <button id="btn-eliminar-area" class="peligro">Eliminar área</button>
       </div>
-      <p class="nota">Dibuja un polígono sobre el mapa para delimitar el área segura del niño y presiona "Guardar área".</p>
+      <p class="nota">Dibuja un polígono sobre el mapa para delimitar el área segura del niño y presiona "Guardar área".
+      </p>
+
+      <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+
+      <h3>Administrar Niños</h3>
+      <div class="grupo-botones" style="margin-top: 10px;">
+        <button id="btn-mostrar-modal-nino" class="secundario">Registrar Nuevo Niño</button>
+        <button id="btn-mostrar-modal-codigo">Vincular Dispositivo (App)</button>
+      </div>
     </section>
 
     <section class="panel hidden" id="map-panel">
@@ -45,19 +54,57 @@
         <p><strong>Unidad educativa activa:</strong> <span id="unidad-activa">-</span></p>
         <p><strong>Niño monitoreado:</strong> <span id="nino-activo">-</span></p>
       </div>
-
     </section>
-    <button id="btn-notificar">Enviar Notificación Prueba</button>
   </div>
-  
+
 
   <div id="map"></div>
+
+  <!-- Modal para Código de Vinculación -->
+  <div id="modal-codigo" class="modal-overlay hidden">
+    <div class="modal-content">
+      <span class="close-modal" id="close-modal-codigo">&times;</span>
+      <h3>Vincular Dispositivo Móvil</h3>
+      <p>Genera un código para vincular la App Móvil del niño.</p>
+      <div class="codigo-container">
+        <span id="codigo-display" class="codigo">- - - - - -</span>
+      </div>
+      <div class="modal-actions">
+        <button id="btn-generar-codigo">Generar Nuevo Código</button>
+      </div>
+      <p class="nota">Ingresa este código en la aplicación móvil del niño.</p>
+    </div>
+  </div>
+
+  <!-- Modal para Registrar Nuevo Niño -->
+  <div id="modal-nuevo-nino" class="modal-overlay hidden">
+    <div class="modal-content">
+      <span class="close-modal" id="close-modal-nino">&times;</span>
+      <h3>Registrar Nuevo Niño</h3>
+      <div style="display: flex; flex-direction: column; gap: 10px; text-align: left;">
+        <label>Nombre:</label>
+        <input type="text" id="new-nino-nombre" placeholder="Nombre">
+
+        <label>Apellidos:</label>
+        <input type="text" id="new-nino-apellidos" placeholder="Apellidos">
+
+        <label>Unidad Educativa:</label>
+        <select id="new-nino-unidad"></select>
+
+        <label>Observaciones:</label>
+        <input type="text" id="new-nino-obs" placeholder="Alergias, notas...">
+      </div>
+      <div class="modal-actions">
+        <button id="btn-guardar-nino">Guardar</button>
+      </div>
+    </div>
+  </div>
 
   <script defer src="vendor/leaflet/leaflet.js"></script>
   <script defer src="vendor/leaflet-draw/leaflet.draw.js"></script>
 
   <!-- IMPORTANTE: main.js como módulo -->
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js?v=2"></script>
 
 </body>
 

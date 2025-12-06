@@ -5,7 +5,15 @@ const insertPosition = async ({ ninoId, lon, lat }) => {
     'SELECT * FROM registrar_posicion($1, $2, $3)',
     [ninoId, lon, lat]
   );
-  return result.rows[0];
+  const row = result.rows[0];
+  return {
+    posicion_id: row.out_posicion_id,
+    estado: row.out_estado,
+    mensaje: row.out_mensaje,
+    lat: row.out_lat,
+    lon: row.out_lon,
+    fecha_hora: row.out_fecha_hora
+  };
 };
 
 const getLatestPositions = async (ninoId, limit) => {

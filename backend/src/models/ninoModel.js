@@ -48,5 +48,16 @@ const assignUnit = async ({ ninoId, unidadId }) => {
 module.exports = {
   createChild,
   findById,
-  assignUnit
+  assignUnit,
+  guardarCodigo: async (id, codigo) => {
+    return db.query('UPDATE nino SET codigo_vinculacion = $2 WHERE id = $1', [id, codigo]);
+  },
+  buscarPorCodigo: async (codigo) => {
+    const res = await db.query('SELECT * FROM nino WHERE codigo_vinculacion = $1', [codigo]);
+    return res.rows[0];
+  },
+  findByMadreId: async (madreId) => {
+    const res = await db.query('SELECT * FROM nino WHERE madre_id = $1', [madreId]);
+    return res.rows;
+  }
 };
