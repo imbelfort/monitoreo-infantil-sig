@@ -1,5 +1,6 @@
 ﻿const posicionModel = require('../models/posicionModel');
 const ninoModel = require('../models/ninoModel');
+const notificacionesController = require('../controllers/notificacionesController');
 
 // Inserta una nueva posición y devuelve el estado dentro/fuera
 const crearPosicion = async (req, res, next) => {
@@ -17,6 +18,12 @@ const crearPosicion = async (req, res, next) => {
     }
 
     const posicion = await posicionModel.insertPosition({ ninoId: nino_id, lon, lat });
+
+    // Notificar si está fuera
+    if (posicion.estado === 'fuera' && nino.madreId) {
+      notificacionesController.enviarNotificacionSalida(nino.id, nino.nombre, nino.madreId);
+    }
+
     res.json(posicion);
   } catch (error) {
     next(error);

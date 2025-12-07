@@ -1,10 +1,12 @@
-﻿// ==================CONFIGURACIÓN=========================
+﻿import { iniciarNotificaciones } from './modules/notificaciones.js';
+
+// ==================CONFIGURACIÓN=========================
 // Usar ruta relativa para producción (Vercel) o localhost por defecto si falla
 const API_BASE = '/api';
 
 // const CHILD_ID = 1; // ELIMINADO: Ahora se obtiene dinámicamente al iniciar sesión
 const DEFAULT_CENTER = { lat: -17.78305, lon: -63.18255 };
-const VAPID_PUBLIC_KEY = "BJBWcyM9jEKZvKnIO3Nh3mUIQditqSCNiMSCVpfS-MJjL5Pm1Fk8dS1EzAXOU7fJMLV-jHKDStAArhDAWRkngmY"
+// VAPID KEY MOVED TO MODULE
 
 let map;
 let drawnItems;
@@ -237,29 +239,7 @@ async function guardarNuevoNino() {
   }
 }
 
-async function registrarPush(userId) {
-  // Registrar service worker
-  const registro = await navigator.serviceWorker.register("/service-worker.js");
-
-  const permiso = await Notification.requestPermission();
-  if (permiso !== "granted") {
-    console.log("Permiso de notificaciones denegado");
-    return;
-  }
-
-  const subscription = await registro.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: VAPID_PUBLIC_KEY // esta variable debe venir del backend
-  });
-
-  await fetch(`${API_BASE}/suscripcion-push`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, subscription })
-  });
-
-  console.log("Suscripción guardada correctamente");
-}
+// function registrarPush removed - logic moved to modules/notificaciones.js
 
 async function cargarDatosNino() {
   if (!currentChildId) return;
@@ -338,8 +318,8 @@ async function iniciarSesion() {
     }
     currentUser = data;
 
-    registrarPush(currentUser.id);
-    console.log("Push registrado para el usuario:", currentUser);
+    iniciarNotificaciones(currentUser.id, API_BASE);
+    console.log("Sistema de notificaciones inicializado para:", currentUser.email);
 
     loginEmail.value = '';
     loginPass.value = '';

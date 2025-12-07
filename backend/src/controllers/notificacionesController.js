@@ -84,3 +84,33 @@ exports.enviarPrueba = async (req, res) => {
     res.status(500).json({ error: "Error enviando notificación" });
   }
 };
+
+exports.enviarNotificacionSalida = async (ninoId, ninoNombre, madreId) => {
+  try {
+    const usuario = await db.query(
+      "SELECT push_subscriptions FROM usuario WHERE id = $1",
+      [madreId]
+    );
+    const subs = usuario.rows[0].push_subscriptions || [];
+
+    if (subs.length === 0) return;
+
+    const payload = {
+      title: "🚨 Alerta de Seguridad",
+      body: `${ninoNombre} ha salido del área segura.`,
+      icon: "/icon.png"
+    };
+
+    console.log(`🔔 Enviando alerta salida para ${ninoNombre} a madre ${madreId}`);
+
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(sub, JSON.stringify(payload));
+      } catch (e) {
+        console.error("Error enviando push individual:", e.statusCode);
+      }
+    }
+  } catch (error) {
+    console.error("Error en enviarNotificacionSalida:", error);
+  }
+};
