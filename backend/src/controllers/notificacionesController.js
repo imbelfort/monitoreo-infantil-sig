@@ -87,6 +87,12 @@ exports.enviarPrueba = async (req, res) => {
 
 exports.enviarNotificacionSalida = async (ninoId, ninoNombre, madreId) => {
   try {
+    if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+      console.error("❌ ERROR CRÍTICO: VAPID Keys no encontradas en variables de entorno!");
+    } else {
+      console.log("✅ VAPID Keys detectadas.");
+    }
+
     const usuario = await db.query(
       "SELECT push_subscriptions FROM usuario WHERE id = $1",
       [madreId]

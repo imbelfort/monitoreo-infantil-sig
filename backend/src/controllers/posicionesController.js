@@ -19,8 +19,12 @@ const crearPosicion = async (req, res, next) => {
 
     const posicion = await posicionModel.insertPosition({ ninoId: nino_id, lon, lat });
 
+    console.log(`📍 Posición recibida: NiñoID=${nino_id}, Lat=${lat}, Lon=${lon}`);
+    console.log(`👉 Resultado: Estado=${posicion.estado}, Mensaje="${posicion.mensaje}"`);
+
     // Notificar si está fuera
     if (posicion.estado === 'fuera' && nino.madreId) {
+      console.log(`🚨 ALERTANDO: Niño ${nino.nombre} (ID ${nino.id}) fuera de zona. Notificando a MadreID ${nino.madreId}`);
       notificacionesController.enviarNotificacionSalida(nino.id, nino.nombre, nino.madreId);
     }
 
