@@ -308,7 +308,7 @@ async function iniciarSesion() {
       if (data.ninos && data.ninos.length > 0) {
         currentChildId = data.ninos[0].id; // Por defecto el primero
         console.log("Niño seleccionado ID:", currentChildId);
-        cargarDatosNino(); // Cargar datos del niño seleccionado
+        await cargarDatosNino(); // Cargar datos del niño seleccionado
         iniciarMonitoreoMadre();
         actualizarEstadoUI('Dibuja el área segura y presiona guardar.', 'pendiente');
       } else {
