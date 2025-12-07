@@ -465,25 +465,34 @@ async function guardarAreaMadre() {
   }
   if (!currentUser || currentUser.rol !== 'madre') return;
 
+  const aplicarTodos = document.getElementById('check-aplicar-todos').checked;
+
   try {
     const payload = {
       madre_id: currentUser.id,
       nombre: 'Área definida por la madre',
-      geom: pendingAreaGeoJSON.geometry || pendingAreaGeoJSON
+      geom: pendingAreaGeoJSON.geometry || pendingAreaGeoJSON,
+      aplicarTodos: aplicarTodos
     };
+
+    console.log("Enviando area segura...", payload);
+
     const resp = await fetch(`${API_BASE}/ninos/${currentChildId}/area`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
-    if (!resp.ok) {
-      throw new Error('Error guardando área');
-    }
+    if (!resp.ok) throw new Error('Error al guardar área');
 
-    const data = await resp.json();
-    unidadActivaEl.textContent = data.nombre || 'Área segura personalizada';
-    actualizarEstadoUI('Área segura guardada correctamente.', 'dentro');
+    const area = await resp.json();
+    alert(aplicarTodos ? 'Área guardada para TODOS tus niños.' : 'Área guardada para este niño.');
+
+    // UI Update
+    unidadActivaEl.textContent = 'Área segura asignada';
+    if (areaLayer) {
+      areaLayer.setStyle({ color: '#2ecc71' });
+    }
   } catch (error) {
     actualizarEstadoUI(error.message, 'pendiente');
   }
@@ -769,6 +778,11 @@ function moverMarcador(lat, lon, estado, fecha) {
     marcador.setPopupContent(popupContent);
   } else {
     marcador.bindPopup(popupContent);
+  }
+
+  // Asegurar que el marcador esté encima de polígonos
+  if (marcador.bringToFront) {
+    marcador.bringToFront();
   }
 }
 

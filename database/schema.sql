@@ -67,39 +67,43 @@ RETURNS TABLE (
 ) AS $$
 DECLARE
     punto geometry(Point, 4326);
-    area geometry(Polygon, 4326);
+    area_madre geometry(Polygon, 4326);
+    area_escuela geometry(Polygon, 4326);
+    es_seguro BOOLEAN := FALSE;
     v_estado_txt VARCHAR(20);
     v_mensaje_txt TEXT;
 BEGIN
     punto := ST_SetSRID(ST_MakePoint(_lon, _lat), 4326);
 
-    -- Priority: mother-defined safe area
-    SELECT geom
-    INTO area
+    -- 1. Obtener Area Segura Madre (si existe)
+    SELECT geom INTO area_madre
     FROM area_segura
     WHERE nino_id = _nino_id
-    ORDER BY fecha_actualizacion DESC
-    LIMIT 1;
+    ORDER BY fecha_actualizacion DESC LIMIT 1;
 
-    -- Fallback: default school polygon
-    IF area IS NULL THEN
-        SELECT ue.geom
-        INTO area
-        FROM nino ni
-        JOIN unidad_educativa ue ON ue.id = ni.unidad_id
-        WHERE ni.id = _nino_id;
+    -- 2. Obtener Area Escuela (si existe)
+    SELECT ue.geom INTO area_escuela
+    FROM nino ni
+    JOIN unidad_educativa ue ON ue.id = ni.unidad_id
+    WHERE ni.id = _nino_id;
+
+    -- 3. Verificar si está en ALGUNA de las áreas
+    IF area_madre IS NOT NULL AND ST_Within(punto, area_madre) THEN
+        es_seguro := TRUE;
     END IF;
 
-    IF area IS NULL THEN
-        RAISE EXCEPTION 'No safe area associated to child %', _nino_id;
+    IF area_escuela IS NOT NULL AND ST_Within(punto, area_escuela) THEN
+        es_seguro := TRUE;
     END IF;
 
-    IF ST_Within(punto, area) THEN
+    -- 4. Definir estado final
+    IF es_seguro THEN
         v_estado_txt := 'dentro';
-        v_mensaje_txt := 'El nino esta dentro del area segura.';
+        v_mensaje_txt := 'El niño está en zona segura.';
     ELSE
-        v_estado_txt := 'fuera';
-        v_mensaje_txt := 'ALERTA: El nino esta fuera del area segura.';
+        v_estado_txt := 'fuera'; 
+        -- Si no tenía ninguna zona asignada, igual es alerta
+        v_mensaje_txt := 'ALERTA: El niño esta fuera de zona segura.';
     END IF;
 
     RETURN QUERY

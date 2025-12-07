@@ -19,26 +19,40 @@ const obtenerArea = async (req, res, next) => {
 const guardarArea = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { madre_id, nombre, geom } = req.body;
-    if (!madre_id) {
-      return res.status(400).json({ error: 'madre_id es obligatorio.' });
-    }
-    if (!geom) {
-      return res.status(400).json({ error: 'Se requiere el GeoJSON del polígono.' });
-    }
+    const { madre_id, nombre, geom, aplicarTodos } = req.body;
 
-    const nino = await ninoModel.findById(id);
-    if (!nino) {
-      return res.status(404).json({ error: 'Niño no encontrado.' });
-    }
+    if (!madre_id) return res.status(400).json({ error: 'madre_id es obligatorio.' });
+    if (!geom) return res.status(400).json({ error: 'Se requiere el GeoJSON del polígono.' });
 
-    const area = await areaModel.upsertArea({
-      ninoId: id,
-      madreId: madre_id,
-      nombre,
-      geojson: geom
-    });
-    res.json(area);
+    if (aplicarTodos) {
+      // Obtener todos los niños de la madre
+      const ninos = await ninoModel.findByMadreId(madre_id);
+      if (!ninos || ninos.length === 0) {
+        return res.status(404).json({ error: 'No se encontraron niños para esta madre.' });
+      }
+
+      // Aplicar a todos
+      const promesas = ninos.map(nino =>
+        areaModel.upsertArea({
+          ninoId: nino.id,
+          madreId: madre_id,
+          nombre,
+          geojson: geom
+        })
+      );
+
+      await Promise.all(promesas);
+      return res.json({ message: 'Area aplicada a todos los niños', count: ninos.length });
+    } else {
+      // Solo al niño actual
+      const area = await areaModel.upsertArea({
+        ninoId: id,
+        madreId: madre_id,
+        nombre,
+        geojson: geom
+      });
+      res.json(area);
+    }
   } catch (error) {
     next(error);
   }
