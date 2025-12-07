@@ -1,5 +1,9 @@
 ﻿import { iniciarNotificaciones } from './modules/notificaciones.js';
 
+window.onerror = function (message, source, lineno, colno, error) {
+  alert('Error JS Global: ' + message + ' \nLinea: ' + lineno);
+};
+
 // ==================CONFIGURACIÓN=========================
 // Usar ruta relativa para producción (Vercel) o localhost por defecto si falla
 const API_BASE = '/api';
@@ -21,6 +25,7 @@ let pendingAreaGeoJSON = null;
 let drawPolygonTool = null;
 let currentChildId = null; // ID del niño seleccionado
 let watchId = null; // Variable de rastreo
+let isUserInteracting = false;
 
 // Elementos UI
 const loginEmail = document.getElementById('login-email');
@@ -34,6 +39,7 @@ const btnGuardarArea = document.getElementById('btn-guardar-area');
 const btnEliminarArea = document.getElementById('btn-eliminar-area');
 const btnLogin = document.getElementById('btn-login');
 const btnLogout = document.getElementById('btn-logout');
+const listaNinosEl = document.getElementById('lista-ninos');
 
 // Elementos Modal Vinculacion
 const btnGenerarCodigo = document.getElementById('btn-generar-codigo');
@@ -49,13 +55,24 @@ const btnGuardarNino = document.getElementById('btn-guardar-nino');
 const selectUnidadNino = document.getElementById('new-nino-unidad');
 
 // Elementos Modal Nueva Unidad
+// Elementos Modal Nueva Unidad
 const modalUnidad = document.getElementById('modal-nueva-unidad');
 const closeModalUnidad = document.getElementById('close-modal-unidad');
 const btnGuardarUnidad = document.getElementById('btn-guardar-unidad');
-const btnNuevaUnidadMapa = document.getElementById('btn-nueva-unidad-mapa');
-const listaNinosEl = document.getElementById('lista-ninos');
+const btnNuevaUnidad = document.getElementById('btn-nueva-unidad');
+const btnGestionUnidades = document.getElementById('btn-gestion-unidades');
+const modalGestionUnidades = document.getElementById('modal-gestion-unidades');
+const closeModalGestion = document.getElementById('close-modal-gestion');
 
-btnSimular.disabled = true;
+// DEBUG: Verificar elementos críticos
+[
+  { id: 'modal-nueva-unidad', el: modalUnidad },
+  { id: 'close-modal-unidad', el: closeModalUnidad },
+  { id: 'btn-guardar-unidad', el: btnGuardarUnidad },
+  { id: 'btn-nueva-unidad', el: btnNuevaUnidad }
+].forEach(check => {
+  if (!check.el) console.error(`ERROR CRÍTICO: Elemento no encontrado: #${check.id}`);
+});
 
 const panels = {
   login: document.getElementById('login-panel'),
@@ -68,48 +85,84 @@ document.addEventListener('DOMContentLoaded', () => {
   inicializarMapa();
 
   // Eventos Login
-  btnLogin.addEventListener('click', iniciarSesion);
-  btnLogout.addEventListener('click', cerrarSesion);
+  if (btnLogin) btnLogin.addEventListener('click', iniciarSesion);
+  if (btnLogout) btnLogout.addEventListener('click', cerrarSesion);
 
   // Eventos Madre
-  btnDibujarArea.addEventListener('click', iniciarDibujoMadre);
-  btnGuardarArea.addEventListener('click', guardarAreaMadre);
-  btnEliminarArea.addEventListener('click', eliminarAreaMadre);
+  if (btnDibujarArea) btnDibujarArea.addEventListener('click', iniciarDibujoMadre);
+  if (btnGuardarArea) btnGuardarArea.addEventListener('click', guardarAreaMadre);
+  if (btnEliminarArea) btnEliminarArea.addEventListener('click', eliminarAreaMadre);
+
+  // Eventos Gestion Escolar
+  if (btnNuevaUnidad) {
+    btnNuevaUnidad.addEventListener('click', iniciarDibujoUnidad);
+  }
+  if (btnGestionUnidades) {
+    btnGestionUnidades.addEventListener('click', abrirModalGestionUnidades);
+  }
+  if (closeModalGestion) {
+    closeModalGestion.addEventListener('click', () => modalGestionUnidades.classList.add('hidden'));
+  }
 
   // Eventos Rastreo/Simulacion
-  btnSimular.addEventListener('click', toggleRastreo);
+  if (btnSimular) {
+    btnSimular.addEventListener('click', toggleRastreo);
+  }
 
   // Eventos Vinculacion
-  btnGenerarCodigo.addEventListener('click', generarCodigoNino);
-  btnMostrarModalCodigo.addEventListener('click', () => {
-    modalCodigo.classList.remove('hidden');
-    if (currentChildId) generarCodigoNino();
-  });
-  closeModalCodigo.addEventListener('click', () => {
-    modalCodigo.classList.add('hidden');
-  });
+  if (btnGenerarCodigo) btnGenerarCodigo.addEventListener('click', generarCodigoNino);
+  if (btnMostrarModalCodigo) {
+    btnMostrarModalCodigo.addEventListener('click', () => {
+      modalCodigo.classList.remove('hidden');
+      if (currentChildId) generarCodigoNino();
+    });
+  }
+  if (closeModalCodigo) {
+    closeModalCodigo.addEventListener('click', () => {
+      modalCodigo.classList.add('hidden');
+    });
+  }
 
   // Eventos Nuevo Niño
   if (btnMostrarModalNino) {
     btnMostrarModalNino.addEventListener('click', abrirModalNuevoNino);
+  }
+  if (closeModalNino) {
     closeModalNino.addEventListener('click', () => {
       modalNino.classList.add('hidden');
     });
+  }
+  if (btnGuardarNino) {
     btnGuardarNino.addEventListener('click', guardarNuevoNino);
   }
 
-  // Eventos Nueva Unidad
-  if (btnNuevaUnidadMapa) {
-    btnNuevaUnidadMapa.addEventListener('click', iniciarDibujoUnidad);
-    closeModalUnidad.addEventListener('click', () => modalUnidad.classList.add('hidden'));
-    btnGuardarUnidad.addEventListener('click', guardarNuevaUnidad);
+  // Eventos Nueva Unidad (Modal guardado)
+  // Eventos Nueva Unidad (Modal guardado)
+  if (closeModalUnidad) {
+    console.log("Asignando evento click a close-modal-unidad");
+    closeModalUnidad.addEventListener('click', () => {
+      console.log("Cerrando modal unidad");
+      modalUnidad.classList.add('hidden');
+    });
+  } else {
+    console.error("No se pudo asignar evento a close-modal-unidad porque es null");
+  }
+  if (btnGuardarUnidad) {
+    console.log("Asignando evento click a btn-guardar-unidad");
+    btnGuardarUnidad.addEventListener('click', (e) => {
+      console.log("CLICK en btn-guardar-unidad");
+      guardarNuevaUnidad(e);
+    });
+  } else {
+    console.error("No se pudo asignar evento a btn-guardar-unidad porque es null");
   }
 
   // Cerrar Modales click afuera
   window.addEventListener('click', (event) => {
-    if (event.target == modalCodigo) modalCodigo.classList.add('hidden');
-    if (event.target == modalNino) modalNino.classList.add('hidden');
-    if (event.target == modalUnidad) modalUnidad.classList.add('hidden');
+    if (modalCodigo && event.target == modalCodigo) modalCodigo.classList.add('hidden');
+    if (modalNino && event.target == modalNino) modalNino.classList.add('hidden');
+    if (modalUnidad && event.target == modalUnidad) modalUnidad.classList.add('hidden');
+    if (modalGestionUnidades && event.target == modalGestionUnidades) modalGestionUnidades.classList.add('hidden');
   });
 
   cargarUnidades();
@@ -126,6 +179,15 @@ function inicializarMapa() {
 
   drawnItems = new L.FeatureGroup();
   map.addLayer(drawnItems);
+
+  // Detectar interacción del usuario para evitar saltos automáticos
+  map.on('mousedown', () => { isUserInteracting = true; });
+  map.on('mouseup', () => { isUserInteracting = false; });
+  map.on('dragstart', () => { isUserInteracting = true; });
+  map.on('dragend', () => { isUserInteracting = false; });
+  map.on('draw:created', () => { isUserInteracting = false; });
+  map.on('draw:drawstart', () => { isUserInteracting = true; });
+  map.on('draw:drawstop', () => { isUserInteracting = false; });
 
   marcador = L.circleMarker([DEFAULT_CENTER.lat, DEFAULT_CENTER.lon], {
     radius: 10,
@@ -162,7 +224,10 @@ function inicializarMapa() {
 }
 
 function abrirModalNuevoNino() {
-  if (!currentUser || currentUser.rol !== 'madre') return;
+  console.log("Intentando abrir modal nuevo niño. Rol:", currentUser?.rol);
+  if (!currentUser || currentUser.rol !== 'madre') {
+    return alert("Debes iniciar sesión como Madre para registrar un niño.");
+  }
 
   // Limpiar campos
   document.getElementById('new-nino-nombre').value = '';
@@ -382,6 +447,7 @@ function iniciarDibujoMadre() {
   if (drawPolygonTool) {
     drawPolygonTool.disable();
   }
+  drawingMode = 'area_segura'; // EXPLICITAMENTE
   drawPolygonTool = new L.Draw.Polygon(map, {
     shapeOptions: {
       color: '#8e44ad',
@@ -390,6 +456,7 @@ function iniciarDibujoMadre() {
   });
   drawPolygonTool.enable();
   unidadActivaEl.textContent = 'Dibujando nueva área...';
+  alert("Dibuja el perímetro del Área Segura Personal para tu niño.");
 }
 
 async function guardarAreaMadre() {
@@ -665,8 +732,11 @@ function moverMarcador(lat, lon, estado, fecha) {
   // Actualizar posición
   marcador.setLatLng([lat, lon]);
 
-  // Centrar mapa si es necesario (opcional)
-  map.panTo([lat, lon]);
+  // Centrar mapa si es necesario (opcional) 
+  // Solo si NO está interactuando y NO está dibujando
+  if (!isUserInteracting && (!drawPolygonTool || !drawPolygonTool._enabled)) {
+    map.panTo([lat, lon]);
+  }
 
   // Actualizar color según estado
   let color = '#3498db'; // Azul (pendiente)
@@ -734,13 +804,25 @@ function renderListaNinos(ninos) {
       </div>
       <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
         <small>${linkedStatus}</small>
-        <button class="btn-ver-mapa" data-id="${nino.id}">Ver en Mapa</button>
+        <div style="display: flex; gap: 5px;">
+            <button class="btn-vincular secundario" style="padding: 5px 10px; font-size: 0.8em;" data-id="${nino.id}">Vincular</button>
+            <button class="btn-ver-mapa" data-id="${nino.id}">Ver en Mapa</button>
+        </div>
       </div>
     `;
 
+    // Evento Vincular
+    const btnVincular = div.querySelector('.btn-vincular');
+    btnVincular.addEventListener('click', (e) => {
+      e.stopPropagation(); // Evitar seleccionar al niño en el mapa si no se quiere
+      currentChildId = nino.id;
+      modalCodigo.classList.remove('hidden');
+      generarCodigoNino();
+    });
+
     // Evento seleccionar
-    const btn = div.querySelector('.btn-ver-mapa');
-    btn.addEventListener('click', async () => {
+    const btnVer = div.querySelector('.btn-ver-mapa');
+    btnVer.addEventListener('click', async () => {
       currentChildId = nino.id;
       console.log("Cambio de niño activo:", currentChildId);
 
@@ -772,17 +854,30 @@ function iniciarDibujoUnidad(e) {
   alert('Dibuja el perímetro de la escuela en el mapa.');
 }
 
-async function guardarNuevaUnidad() {
+async function guardarNuevaUnidad(e) {
+  if (e) e.preventDefault();
+  console.log("Ejecutando guardarNuevaUnidad...");
   const nombre = document.getElementById('new-unidad-nombre').value.trim();
   const direccion = document.getElementById('new-unidad-direccion').value.trim();
 
   if (!nombre) return alert('El nombre es obligatorio.');
-  if (!pendingAreaGeoJSON) return alert('No hay geometría dibujada.');
+  if (!pendingAreaGeoJSON) {
+    console.error("No hay geometría pendiente (pendingAreaGeoJSON es null)");
+    return alert('Error: No has dibujado el área en el mapa.');
+  }
 
   try {
     const geometry = pendingAreaGeoJSON.geometry || pendingAreaGeoJSON;
+    console.log("Geometría detectada:", geometry);
+
     // Backend espera coordenadas closed ring [ [lon,lat]... ]
+    if (!geometry.coordinates || geometry.coordinates.length === 0) {
+      throw new Error("Geometría vacía o inválida");
+    }
     let coords = geometry.coordinates[0];
+
+    // Debug payload
+    console.log("Enviando coordenadas unidad:", coords);
 
     const resp = await fetch(`${API_BASE}/unidades`, {
       method: 'POST',
@@ -811,6 +906,63 @@ async function guardarNuevaUnidad() {
 
     // Seleccionar la nueva en el select
     selectUnidadNino.value = nuevaUnidad.id;
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+}
+
+// ==========================================
+// FUNCIONES GESTION UNIDADES
+// ==========================================
+
+async function abrirModalGestionUnidades() {
+  modalGestionUnidades.classList.remove('hidden');
+  const lista = document.getElementById('lista-unidades-gestion');
+  lista.innerHTML = 'Cargando...';
+
+  await cargarUnidades(); // Refrescar cache
+
+  if (unidadesCache.length === 0) {
+    lista.innerHTML = '<p>No hay unidades registradas.</p>';
+    return;
+  }
+
+  lista.innerHTML = '';
+  unidadesCache.forEach(u => {
+    const item = document.createElement('div');
+    item.style.borderBottom = '1px solid #eee';
+    item.style.padding = '8px';
+    item.style.display = 'flex';
+    item.style.justifyContent = 'space-between';
+    item.style.alignItems = 'center';
+
+    item.innerHTML = `
+            <span>${u.nombre}</span>
+            <button class="peligro btn-sm" data-id="${u.id}" style="padding: 2px 8px; font-size: 0.8em;">Eliminar</button>
+        `;
+
+    item.querySelector('button').addEventListener('click', () => eliminarUnidadBackend(u.id, u.nombre));
+    lista.appendChild(item);
+  });
+}
+
+async function eliminarUnidadBackend(id, nombre) {
+  if (!confirm(`¿Estás seguro de eliminar la unidad "${nombre}"?\nLos niños asociados quedarán sin unidad asignada.`)) {
+    return;
+  }
+
+  try {
+    const resp = await fetch(`${API_BASE}/unidades/${id}`, {
+      method: 'DELETE'
+    });
+
+    if (!resp.ok) throw new Error('Error al eliminar unidad');
+
+    alert('Unidad eliminada correctamente.');
+    abrirModalGestionUnidades(); // Recargar lista modal
+    cargarUnidades(); // Recargar cache global
 
   } catch (error) {
     console.error(error);

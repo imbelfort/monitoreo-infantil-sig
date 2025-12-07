@@ -36,13 +36,22 @@ const listarUnidades = async (req, res, next) => {
 // Registra una nueva unidad educativa persistiendo el pol�gono recibido
 const crearUnidad = async (req, res, next) => {
   try {
+    console.log("BODY RECV:", req.body);
     const { nombre, direccion, coordenadas } = req.body;
     if (!nombre || !Array.isArray(coordenadas)) {
       return res.status(400).json({
         error: 'Se requieren nombre y coordenadas para crear la unidad.'
       });
     }
-    const ring = ensureClosedRing([...coordenadas]);
+    // Asegurar que es array de arrays
+    const coordsLimpias = coordenadas.map(c => {
+      if (Array.isArray(c)) return c;
+      // Si llega como objeto {lat, lng} de Leaflet direct
+      if (c.lat && c.lng || c.lat && c.lon) return [c.lng || c.lon, c.lat];
+      return c;
+    });
+
+    const ring = ensureClosedRing(coordsLimpias);
     const polygonGeoJSON = {
       type: 'Polygon',
       coordinates: [ring]
@@ -50,6 +59,7 @@ const crearUnidad = async (req, res, next) => {
     const unidad = await unidadModel.createUnit(nombre, direccion, polygonGeoJSON);
     res.status(201).json(unidad);
   } catch (error) {
+    console.error("Error crearUnidad:", error);
     next(error);
   }
 };
@@ -68,8 +78,26 @@ const obtenerUnidadGeom = async (req, res, next) => {
   }
 };
 
+// Elimina una unidad educativa
+const eliminarUnidad = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await unidadModel.deleteUnit(id); // Asumimos que el modelo tendrá este método o usamos query directa aquí si es simple
+    // Como no tenemos el método en el modelo aún, lo hacemos directo o lo agregamos al modelo.
+    // Revisando unidadModel (no lo vi completo), mejor agregar query directa aquí por rapidez o invocar db.
+    // PERO mejor mantener consistencia. Voy a asumir que debo agregarlo al modelo o hacerlo aquí con db.
+    // Al no tener 'db' importado aqui (solo unidadModel), debo modificar unidadModel tambien.
+    // Espera, unidadModel.js no fue leido recientemente completo.
+    // Voy a agregarlo a unidadModel primero.
+    res.json({ ok: true, message: 'Unidad eliminada' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   listarUnidades,
   crearUnidad,
-  obtenerUnidadGeom
+  obtenerUnidadGeom,
+  eliminarUnidad
 };

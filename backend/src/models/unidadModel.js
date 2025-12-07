@@ -27,8 +27,13 @@ const getUnitGeometry = async (id) => {
   return result.rows[0];
 };
 
+const deleteUnit = async (id) => {
+  await db.query('DELETE FROM unidad_educativa WHERE id = $1', [id]);
+};
+
 module.exports = {
   getAllUnits,
   createUnit,
-  getUnitGeometry
+  getUnitGeometry,
+  deleteUnit
 };

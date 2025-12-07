@@ -19,6 +19,7 @@ router.post("/notificacion-prueba", notificacionesController.enviarPrueba);
 router.get('/unidades', unidadesController.listarUnidades);
 router.post('/unidades', unidadesController.crearUnidad);
 router.get('/unidades/:id/geom', unidadesController.obtenerUnidadGeom);
+router.delete('/unidades/:id', unidadesController.eliminarUnidad);
 
 router.post('/ninos', ninosController.crearNino);
 router.get('/ninos/:id', ninosController.obtenerNino);

@@ -28,8 +28,9 @@ services:
       PGPASSWORD: 123
       PGDATABASE: sig_monitoreo
       PORT: 4000
-    # No exponemos el puerto directamente para forzar el uso de Nginx (proxy)
-    # ports:
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     #   - "5000:4000"
     networks:
       - sig-net

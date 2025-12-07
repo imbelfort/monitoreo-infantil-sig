@@ -40,6 +40,14 @@
 
       <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
 
+      <h3>Gestión Escolar</h3>
+      <div class="grupo-botones">
+        <button id="btn-nueva-unidad" class="secundario">Nueva Unidad Educativa (Mapa)</button>
+        <button id="btn-gestion-unidades" class="secundario">Administrar Unidades</button>
+      </div>
+
+      <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+
       <h3>Mis Niños</h3>
       <div id="lista-ninos" class="lista-ninos"></div>
 
@@ -50,7 +58,8 @@
 
     <section class="panel hidden" id="map-panel">
       <div id="estado-texto" class="estado estado-pendiente">Inicia sesión para comenzar.</div>
-      <button id="btn-simular">Simular nueva posición</button>
+      <!-- Boton simular eliminado -->
+      <button id="btn-simular" class="hidden">Simular</button>
       <div class="info">
         <p><strong>Unidad educativa activa:</strong> <span id="unidad-activa">-</span></p>
         <p><strong>Niño monitoreado:</strong> <span id="nino-activo">-</span></p>
@@ -90,10 +99,7 @@
         <input type="text" id="new-nino-apellidos" placeholder="Apellidos">
 
         <label>Unidad Educativa:</label>
-        <div style="display: flex; gap: 5px;">
-          <select id="new-nino-unidad" style="flex: 1;"></select>
-          <button id="btn-nueva-unidad-mapa" title="Dibujar en Mapa" style="padding: 0 10px;">+</button>
-        </div>
+        <select id="new-nino-unidad" style="width: 100%;"></select>
 
         <label>Observaciones:</label>
         <input type="text" id="new-nino-obs" placeholder="Alergias, notas...">
@@ -103,6 +109,22 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal Gestion Unidades -->
+  <div id="modal-gestion-unidades" class="modal-overlay hidden">
+    <div class="modal-content">
+      <span class="close-modal" id="close-modal-gestion">&times;</span>
+      <h3>Administrar Unidades Educativas</h3>
+      <div id="lista-unidades-gestion"
+        style="max-height: 300px; overflow-y: auto; text-align: left; border: 1px solid #eee; padding: 10px; margin-bottom: 10px;">
+        <!-- Lista dinamica -->
+      </div>
+      <div class="modal-actions">
+        <button onclick="document.getElementById('modal-gestion-unidades').classList.add('hidden')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Modal para Nueva Unidad (Nombre) -->
   <div id="modal-nueva-unidad" class="modal-overlay hidden">
