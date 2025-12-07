@@ -46,6 +46,13 @@ const closeModalNino = document.getElementById('close-modal-nino');
 const btnGuardarNino = document.getElementById('btn-guardar-nino');
 const selectUnidadNino = document.getElementById('new-nino-unidad');
 
+// Elementos Modal Nueva Unidad
+const modalUnidad = document.getElementById('modal-nueva-unidad');
+const closeModalUnidad = document.getElementById('close-modal-unidad');
+const btnGuardarUnidad = document.getElementById('btn-guardar-unidad');
+const btnNuevaUnidadMapa = document.getElementById('btn-nueva-unidad-mapa');
+const listaNinosEl = document.getElementById('lista-ninos');
+
 btnSimular.disabled = true;
 
 const panels = {
@@ -89,14 +96,24 @@ document.addEventListener('DOMContentLoaded', () => {
     btnGuardarNino.addEventListener('click', guardarNuevoNino);
   }
 
+  // Eventos Nueva Unidad
+  if (btnNuevaUnidadMapa) {
+    btnNuevaUnidadMapa.addEventListener('click', iniciarDibujoUnidad);
+    closeModalUnidad.addEventListener('click', () => modalUnidad.classList.add('hidden'));
+    btnGuardarUnidad.addEventListener('click', guardarNuevaUnidad);
+  }
+
   // Cerrar Modales click afuera
   window.addEventListener('click', (event) => {
     if (event.target == modalCodigo) modalCodigo.classList.add('hidden');
     if (event.target == modalNino) modalNino.classList.add('hidden');
+    if (event.target == modalUnidad) modalUnidad.classList.add('hidden');
   });
 
   cargarUnidades();
 });
+
+let drawingMode = 'area_segura'; // 'area_segura' | 'unidad_educativa'
 
 function inicializarMapa() {
   map = L.map('map').setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lon], 17);
@@ -118,13 +135,27 @@ function inicializarMapa() {
 
   map.on(L.Draw.Event.CREATED, (event) => {
     if (!currentUser || currentUser.rol !== 'madre') return;
-    if (areaLayer) {
+
+    // Limpiar dibujo previo si existe
+    if (areaLayer && drawingMode === 'area_segura') {
       drawnItems.removeLayer(areaLayer);
     }
-    areaLayer = event.layer;
-    drawnItems.addLayer(areaLayer);
-    pendingAreaGeoJSON = areaLayer.toGeoJSON();
-    unidadActivaEl.textContent = 'Área segura (no guardada)';
+    // Si estamos creando unidad, limpiamos capa temporal anterior si hubiera
+    // Pero aquí asumimos un dibujo fresco cada vez
+
+    const layer = event.layer;
+    drawnItems.addLayer(layer);
+    pendingAreaGeoJSON = layer.toGeoJSON();
+
+    if (drawingMode === 'area_segura') {
+      areaLayer = layer;
+      unidadActivaEl.textContent = 'Área segura (no guardada)';
+    } else if (drawingMode === 'unidad_educativa') {
+      // Al terminar de dibujar unidad, abrimos modal
+      modalUnidad.classList.remove('hidden');
+      // Temporalmente guardamos la capa para removerla si cancela
+      areaLayer = layer;
+    }
   });
 }
 
@@ -178,6 +209,16 @@ async function guardarNuevoNino() {
     modalNino.classList.add('hidden');
     currentChildId = nuevoNino.id;
     actualizarEstadoUI(`Niño "${nuevoNino.nombre}" registrado exitosamente.`, 'pendiente');
+
+    // Agregar a la lista local y repintar
+    if (currentUser) {
+      if (!currentUser.ninos) currentUser.ninos = [];
+      // Hack: obtener nombre unidad del select
+      const nombreUnidad = selectUnidadNino.options[selectUnidadNino.selectedIndex].text;
+      nuevoNino.nombre_unidad = nombreUnidad;
+      currentUser.ninos.push(nuevoNino);
+      renderListaNinos(currentUser.ninos);
+    }
 
     // Recargar datos
     cargarDatosNino();
@@ -246,6 +287,7 @@ async function cargarUnidades() {
     const resp = await fetch(`${API_BASE}/unidades`);
     if (!resp.ok) throw new Error('No se pudo obtener unidades');
     unidadesCache = await resp.json();
+    unidadesCache.sort((a, b) => a.nombre.localeCompare(b.nombre));
     if (!areaLayer && unidadesCache.length) {
       await cargarUnidadEducativa(unidadesCache[0].id);
     }
@@ -308,10 +350,12 @@ async function iniciarSesion() {
       if (data.ninos && data.ninos.length > 0) {
         currentChildId = data.ninos[0].id; // Por defecto el primero
         console.log("Niño seleccionado ID:", currentChildId);
+        renderListaNinos(data.ninos);
         await cargarDatosNino(); // Cargar datos del niño seleccionado
         iniciarMonitoreoMadre();
-        actualizarEstadoUI('Dibuja el área segura y presiona guardar.', 'pendiente');
+        actualizarEstadoUI('Selecciona un niño de la lista.', 'pendiente');
       } else {
+        renderListaNinos([]);
         actualizarEstadoUI('No tienes niños vinculados.', 'fuera');
       }
     } else {
@@ -603,7 +647,15 @@ async function generarCodigoNino() {
     const data = await resp.json();
     display.textContent = data.codigo;
     actualizarEstadoUI('Código generado. Úsalo en el celular del niño.', 'pendiente');
-    cargarDatosNino(); // Actualizar estado "Vinculado" en el sidebar
+
+    // Actualizar lista
+    if (currentUser && currentUser.ninos) {
+      const nino = currentUser.ninos.find(n => n.id === currentChildId);
+      if (nino) nino.codigo_vinculacion = data.codigo;
+      renderListaNinos(currentUser.ninos);
+    }
+
+    cargarDatosNino(); // Actualizar detalle activo
   } catch (error) {
     console.error(error);
     display.textContent = 'ERROR';
@@ -667,5 +719,121 @@ function moverMarcador(lat, lon, estado, fecha) {
     marcador.setPopupContent(popupContent);
   } else {
     marcador.bindPopup(popupContent);
+  }
+}
+
+// ==========================================
+// FUNCIONES NUEVAS PARA GESTION ESCOLAR
+// ==========================================
+
+function renderListaNinos(ninos) {
+  if (!listaNinosEl) return;
+  listaNinosEl.innerHTML = '';
+
+  if (!ninos || ninos.length === 0) {
+    listaNinosEl.innerHTML = '<p class="nota">No tienes niños registrados.</p>';
+    return;
+  }
+
+  ninos.forEach(nino => {
+    const div = document.createElement('div');
+    div.className = 'nino-card';
+    if (currentChildId === nino.id) {
+      div.classList.add('activo');
+    }
+
+    const linkedStatus = nino.codigo_vinculacion
+      ? '<span style="color: green; font-weight: bold;">✓ Vinculado</span>'
+      : '<span style="color: #e67e22;">⚠ Sin App</span>';
+
+    div.innerHTML = `
+      <div style="flex: 1;">
+        <strong>${nino.nombre} ${nino.apellidos || ''}</strong><br>
+        <small>${nino.nombre_unidad || 'Sin escuela'}</small><br>
+        <small>Código: <code>${nino.codigo_vinculacion || '---'}</code></small>
+      </div>
+      <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
+        <small>${linkedStatus}</small>
+        <button class="btn-ver-mapa" data-id="${nino.id}">Ver en Mapa</button>
+      </div>
+    `;
+
+    // Evento seleccionar
+    const btn = div.querySelector('.btn-ver-mapa');
+    btn.addEventListener('click', async () => {
+      currentChildId = nino.id;
+      console.log("Cambio de niño activo:", currentChildId);
+
+      // Actualizar UI visualmente
+      document.querySelectorAll('.nino-card').forEach(c => c.classList.remove('activo'));
+      div.classList.add('activo');
+
+      await cargarDatosNino();
+      iniciarMonitoreoMadre();
+    });
+
+    listaNinosEl.appendChild(div);
+  });
+}
+
+function iniciarDibujoUnidad(e) {
+  if (e) e.preventDefault();
+  if (drawPolygonTool) {
+    drawPolygonTool.disable();
+  }
+  drawingMode = 'unidad_educativa';
+  drawPolygonTool = new L.Draw.Polygon(map, {
+    shapeOptions: {
+      color: '#2980b9',
+      weight: 2
+    }
+  });
+  drawPolygonTool.enable();
+  alert('Dibuja el perímetro de la escuela en el mapa.');
+}
+
+async function guardarNuevaUnidad() {
+  const nombre = document.getElementById('new-unidad-nombre').value.trim();
+  const direccion = document.getElementById('new-unidad-direccion').value.trim();
+
+  if (!nombre) return alert('El nombre es obligatorio.');
+  if (!pendingAreaGeoJSON) return alert('No hay geometría dibujada.');
+
+  try {
+    const geometry = pendingAreaGeoJSON.geometry || pendingAreaGeoJSON;
+    // Backend espera coordenadas closed ring [ [lon,lat]... ]
+    let coords = geometry.coordinates[0];
+
+    const resp = await fetch(`${API_BASE}/unidades`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre,
+        direccion,
+        coordenadas: coords
+      })
+    });
+
+    if (!resp.ok) throw new Error('Error al guardar unidad');
+
+    const nuevaUnidad = await resp.json();
+    alert(`Unidad "${nuevaUnidad.nombre}" creada.`);
+
+    // Limpiar UI
+    modalUnidad.classList.add('hidden');
+    if (areaLayer) drawnItems.removeLayer(areaLayer);
+    areaLayer = null;
+    document.getElementById('new-unidad-nombre').value = '';
+    document.getElementById('new-unidad-direccion').value = '';
+
+    // Recargar select
+    await cargarUnidades();
+
+    // Seleccionar la nueva en el select
+    selectUnidadNino.value = nuevaUnidad.id;
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
   }
 }

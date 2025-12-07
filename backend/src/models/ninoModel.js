@@ -58,7 +58,13 @@ module.exports = {
     return res.rows[0];
   },
   findByMadreId: async (madreId) => {
-    const res = await db.query('SELECT * FROM nino WHERE madre_id = $1', [madreId]);
+    const res = await db.query(`
+      SELECT n.*, u.nombre AS "nombre_unidad"
+      FROM nino n
+      LEFT JOIN unidad_educativa u ON n.unidad_id = u.id
+      WHERE n.madre_id = $1
+      ORDER BY n.id ASC
+    `, [madreId]);
     return res.rows;
   }
 };

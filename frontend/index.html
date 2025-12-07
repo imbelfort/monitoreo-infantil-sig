@@ -40,10 +40,11 @@
 
       <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
 
-      <h3>Administrar Niños</h3>
-      <div class="grupo-botones" style="margin-top: 10px;">
-        <button id="btn-mostrar-modal-nino" class="secundario">Registrar Nuevo Niño</button>
-        <button id="btn-mostrar-modal-codigo">Vincular Dispositivo (App)</button>
+      <h3>Mis Niños</h3>
+      <div id="lista-ninos" class="lista-ninos"></div>
+
+      <div class="grupo-botones" style="margin-top: 20px;">
+        <button id="btn-mostrar-modal-nino" class="primario full-width">Registrar Nuevo Niño</button>
       </div>
     </section>
 
@@ -89,13 +90,34 @@
         <input type="text" id="new-nino-apellidos" placeholder="Apellidos">
 
         <label>Unidad Educativa:</label>
-        <select id="new-nino-unidad"></select>
+        <div style="display: flex; gap: 5px;">
+          <select id="new-nino-unidad" style="flex: 1;"></select>
+          <button id="btn-nueva-unidad-mapa" title="Dibujar en Mapa" style="padding: 0 10px;">+</button>
+        </div>
 
         <label>Observaciones:</label>
         <input type="text" id="new-nino-obs" placeholder="Alergias, notas...">
       </div>
       <div class="modal-actions">
         <button id="btn-guardar-nino">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para Nueva Unidad (Nombre) -->
+  <div id="modal-nueva-unidad" class="modal-overlay hidden">
+    <div class="modal-content">
+      <span class="close-modal" id="close-modal-unidad">&times;</span>
+      <h3>Nueva Unidad Educativa</h3>
+      <p>Has dibujado el área. Ahora ingresa los datos.</p>
+      <div style="display: flex; flex-direction: column; gap: 10px; text-align: left;">
+        <label>Nombre de la Unidad:</label>
+        <input type="text" id="new-unidad-nombre" placeholder="Ej. Colegio Don Bosco">
+        <label>Dirección (Opcional):</label>
+        <input type="text" id="new-unidad-direccion" placeholder="Av. Principal #123">
+      </div>
+      <div class="modal-actions">
+        <button id="btn-guardar-unidad">Guardar Unidad</button>
       </div>
     </div>
   </div>
