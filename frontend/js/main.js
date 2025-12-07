@@ -226,7 +226,15 @@ async function cargarDatosNino() {
     const resp = await fetch(`${API_BASE}/ninos/${currentChildId}`);
     if (!resp.ok) throw new Error('No se pudo obtener datos del niño');
     childData = await resp.json();
-    ninoActivoEl.innerHTML = `<strong>${childData.nombre}</strong> <span style="color: green; font-size: 0.9em;">(Dispositivo Vinculado)</span>`;
+
+    let statusHtml = '';
+    if (childData.codigo_vinculacion) {
+      statusHtml = '<span style="color: green; font-size: 0.9em;">(Dispositivo Vinculado)</span>';
+    } else {
+      statusHtml = '<span style="color: #e67e22; font-size: 0.9em;">(Sin Dispositivo Vinculado)</span>';
+    }
+
+    ninoActivoEl.innerHTML = `<strong>${childData.nombre}</strong> ${statusHtml}`;
     await cargarAreaSegura();
   } catch (error) {
     console.error(error.message);
@@ -505,7 +513,7 @@ async function toggleRastreo() {
 async function enviarPosicionReal(lat, lon, accuracy) {
   try {
     // Mostrar en mapa localmente
-    moverMarcador(lat, lon, 'pendiente');
+    moverMarcador(lat, lon, 'pendiente', new Date().toISOString());
 
     // Enviar al Backend
     const resp = await fetch(`${API_BASE}/posiciones`, {
@@ -523,7 +531,7 @@ async function enviarPosicionReal(lat, lon, accuracy) {
 
     const data = await resp.json();
     // Actualizar color/estado basado en la respuesta del servidor (dentro/fuera)
-    moverMarcador(data.lat, data.lon, data.estado);
+    moverMarcador(data.lat, data.lon, data.estado, data.fecha_hora);
     actualizarEstadoUI(data.mensaje, data.estado, data.fecha_hora);
 
   } catch (error) {
@@ -566,7 +574,7 @@ async function consultarUltimaPosicion() {
       : 'ALERTA: El niño está fuera del área segura.';
     actualizarEstadoUI(mensaje, estado, ultima.fecha_hora);
     if (typeof ultima.lat === 'number' && typeof ultima.lon === 'number') {
-      moverMarcador(ultima.lat, ultima.lon, estado);
+      moverMarcador(ultima.lat, ultima.lon, estado, ultima.fecha_hora);
     }
   } catch (error) {
     console.warn(error.message);
@@ -595,6 +603,7 @@ async function generarCodigoNino() {
     const data = await resp.json();
     display.textContent = data.codigo;
     actualizarEstadoUI('Código generado. Úsalo en el celular del niño.', 'pendiente');
+    cargarDatosNino(); // Actualizar estado "Vinculado" en el sidebar
   } catch (error) {
     console.error(error);
     display.textContent = 'ERROR';
@@ -618,7 +627,7 @@ function actualizarEstadoUI(mensaje, estado, fecha) {
   }
 }
 
-function moverMarcador(lat, lon, estado) {
+function moverMarcador(lat, lon, estado, fecha) {
   if (!marcador) return;
 
   // Actualizar posición
@@ -628,7 +637,7 @@ function moverMarcador(lat, lon, estado) {
   map.panTo([lat, lon]);
 
   // Actualizar color según estado
-  let color = '#3498db'; // Azul (pendiente/desconocido)
+  let color = '#3498db'; // Azul (pendiente)
   if (estado === 'dentro') color = '#2ecc71'; // Verde
   if (estado === 'fuera') color = '#e74c3c'; // Rojo
 
@@ -636,4 +645,27 @@ function moverMarcador(lat, lon, estado) {
     color: color,
     fillColor: color
   });
+
+  // Configurar Popup
+  let nombre = 'Niño';
+  if (childData && childData.nombre) {
+    nombre = childData.nombre;
+  } else if (currentUser && currentUser.nombre) {
+    nombre = currentUser.nombre;
+  }
+
+  const tiempo = fecha ? new Date(fecha).toLocaleString() : 'Reciente';
+
+  const popupContent = `
+    <div style="text-align: center;">
+      <strong>${nombre}</strong><br>
+      <span style="font-size: 0.85em; color: #555;">${tiempo}</span>
+    </div>
+  `;
+
+  if (marcador.getPopup()) {
+    marcador.setPopupContent(popupContent);
+  } else {
+    marcador.bindPopup(popupContent);
+  }
 }

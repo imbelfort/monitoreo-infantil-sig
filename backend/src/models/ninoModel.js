@@ -24,6 +24,7 @@ const findById = async (id) => {
         n.apellidos,
         n.unidad_id AS "unidadId",
         n.madre_id AS "madreId",
+        n.codigo_vinculacion,
         u.email AS "madreEmail",
         u.nombre AS "madreNombre"
      FROM nino n
