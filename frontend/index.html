@@ -12,7 +12,7 @@
 <body>
   <div class="sidebar">
     <h1>Monitoreo Infantil</h1>
-    <p class="descripcion">Inicia sesión como madre o niño para interactuar con el sistema.</p>
+
 
     <section class="panel" id="login-panel">
       <h2>Acceso</h2>
@@ -22,10 +22,13 @@
       <p class="hint">Madre: madre@gmail.com / madre<br>Niño: niño@gmail.com / niño</p>
     </section>
 
-    <section class="panel hidden" id="usuario-panel">
-      <h2 id="usuario-rol"></h2>
-      <p class="usuario-detalle"></p>
-      <button id="btn-logout" class="secundario">Cerrar sesión</button>
+    <section class="panel hidden" id="usuario-panel"
+      style="flex-direction: row; align-items: center; justify-content: space-between; padding: 10px; border:none;">
+      <div style="flex: 1;">
+        <h2 id="usuario-rol" style="margin:0; font-size: 1rem;"></h2>
+        <p class="usuario-detalle" style="margin:0; font-size: 0.85rem; color: #7f8c8d;"></p>
+      </div>
+      <button id="btn-logout" class="peligro" style="padding: 5px 10px; font-size: 0.8rem; border:none;">Salir</button>
     </section>
 
     <section class="panel hidden" id="madre-panel">
