@@ -1,4 +1,5 @@
 ﻿import { iniciarNotificaciones } from './modules/notificaciones.js';
+import { mostrarAlerta } from './modules/alertas.js';
 
 window.onerror = function (message, source, lineno, colno, error) {
   alert('Error JS Global: ' + message + ' \nLinea: ' + lineno);
@@ -1018,6 +1019,10 @@ async function actualizarEstadosLista() {
 
       el.textContent = esSeguro ? "Seguro (Dentro)" : "ALERTA (Fuera)";
       el.style.color = esSeguro ? "#2ecc71" : "#e74c3c";
+
+      if (!esSeguro) {
+        mostrarAlerta(nino.nombre, nino.id);
+      }
 
     } catch (e) {
       console.error("Error status lista:", e);
