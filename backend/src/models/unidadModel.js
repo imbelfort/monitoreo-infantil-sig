@@ -2,7 +2,7 @@ const db = require('../db');
 
 const getAllUnits = async () => {
   const result = await db.query(
-    'SELECT id, nombre, direccion FROM unidad_educativa ORDER BY id ASC'
+    'SELECT id, nombre, direccion, ST_AsGeoJSON(geom) as geom FROM unidad_educativa ORDER BY id ASC'
   );
   return result.rows;
 };
