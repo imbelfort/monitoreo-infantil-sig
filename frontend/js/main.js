@@ -652,7 +652,7 @@ function iniciarMonitoreoMadre() {
   madreMonitorInterval = setInterval(() => {
     consultarUltimaPosicion();
     actualizarEstadosLista(); // Llamada periódica
-  }, 5000);
+  }, 2000);
 }
 
 function detenerMonitoreoMadre() {
